@@ -1,0 +1,7 @@
+# Ignore the actual bookmark files
+*.html
+# Ignore the downloaded fics
+*.epub
+# Ignore Python cache
+__pycache__/
+.env
