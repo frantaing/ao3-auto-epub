@@ -19,7 +19,7 @@ def main():
         # Get the deduplicated dictionary of fics from the extractor
         fics_data = extract_ao3_links(args.file)
         
-        print(f"Found {len(fics_data)} UNIQUE AO3 fics!")
+        print(f"Found {len(fics_data)} AO3 fics!")
         
         # Convert the dictionary items to a list so the first 3 can be sliced for a preview
         preview_items = list(fics_data.items())[:3]
