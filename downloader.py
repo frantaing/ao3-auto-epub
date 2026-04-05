@@ -40,10 +40,6 @@ def get_epub_url(work_id, session):
         if response.status_code != 200:
             return None
 
-        # DEBUG: save the raw HTML to see what AO3 actually returned
-        with open("debug_page.html", "w", encoding="utf-8") as f:
-            f.write(response.text)
-
         soup = BeautifulSoup(response.text, "html.parser")
 
         # AO3's download menu has a <li class="download"> containing format links
