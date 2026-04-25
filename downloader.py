@@ -28,9 +28,6 @@ def get_epub_url(work_id, session):
     """
     work_url = f"{BASE_URL}/works/{work_id}"
 
-    session = requests.Session()
-    session.cookies.set("view_adult", "true", domain="archiveofourown.org")  # bypass adult content gate
-
     try:
         response = session.get(work_url, headers=HEADERS)
 
