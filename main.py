@@ -37,7 +37,7 @@ def main():
         "--output",
         type=str,
         default=DEFAULT_OUTPUT,
-        help=f"Directory to save EPUB files. (default: ~/Downloads/ao3-archiver)"
+        help="Directory to save EPUB files. (default: ~/Downloads/ao3-archiver)"
     )
 
     args = parser.parse_args()
@@ -72,8 +72,21 @@ def main():
     session.cookies.set("view_adult", "true", domain="archiveofourown.org")
 
     for work_id in work_ids:
-        print(f"  Fetching ID {work_id}...", end=" ", flush=True)
-        result = download_epub(work_id, session, delay=args.delay, output_dir=output_path)
+        fic = fics_data[work_id]
+        folder_path = fic["folder_path"]
+
+        # Show the folder context alongside the work ID
+        folder_label = "/".join(folder_path) if folder_path else "root"
+        print(f"  [{folder_label}] Fetching ID {work_id}...", end=" ", flush=True)
+
+        result = download_epub(
+            work_id,
+            session,
+            folder_path=folder_path,
+            delay=args.delay,
+            output_dir=output_path,
+        )
+
         if result:
             print("✓")
             success_count += 1

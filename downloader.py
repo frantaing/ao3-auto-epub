@@ -3,7 +3,7 @@ Module: downloader
 Handles the fetching and saving of EPUB files from AO3.
 """
 
-# --- [ Imports ] ---
+import os
 import time
 import requests
 from bs4 import BeautifulSoup
@@ -21,15 +21,12 @@ def get_epub_url(work_id, session):
 
     Args:
         work_id (str): The numeric AO3 work ID.
-        session (requests.Session): A shared session object.
+        session (requests.Session): A shared session object (with cookies already set).
 
     Returns:
-        str | None: The full EPUB download URL, or None if not found.
+        str | None: The full EPUB download URL, "RATE_LIMITED" on 429, or None if not found.
     """
     work_url = f"{BASE_URL}/works/{work_id}"
-
-    session = requests.Session()
-    session.cookies.set("view_adult", "true", domain="archiveofourown.org")  # bypass adult content gate
 
     try:
         response = session.get(work_url, headers=HEADERS)
@@ -42,7 +39,7 @@ def get_epub_url(work_id, session):
 
         soup = BeautifulSoup(response.text, "html.parser")
 
-        # AO3's download menu has a <li class="download"> containing format links
+        # AO3's download menu is a <li class="download"> containing per-format links
         download_section = soup.find("li", class_="download")
         if not download_section:
             return None
@@ -51,7 +48,6 @@ def get_epub_url(work_id, session):
             if a_tag.text.strip().upper() == "EPUB":
                 href = a_tag.get("href")
                 if href:
-                    # href is relative, e.g. /downloads/12345/Title.epub?updated_at=...
                     return BASE_URL + href
 
         return None
@@ -61,15 +57,17 @@ def get_epub_url(work_id, session):
         return None
 
 
-def download_epub(work_id, session, delay=5, output_dir="."):
+def download_epub(work_id, session, folder_path=None, delay=5, output_dir="."):
     """
-    Downloads an EPUB file for a given AO3 Work ID.
+    Downloads an EPUB for a given AO3 work ID, saving it into the correct subfolder.
 
     Args:
-        work_id (str): The numeric ID of the AO3 work.
-        session (requests.Session): A shared session object.
-        delay (int): Seconds to wait before each request.
-        output_dir (str): Directory to save the downloaded file.
+        work_id (str): The numeric AO3 work ID.
+        session (requests.Session): A shared session object (with cookies already set).
+        folder_path (list[str] | None): Folder hierarchy from bookmarks, e.g. ["ASOIAF"].
+                                        None or [] means save directly into output_dir.
+        delay (int): Seconds to wait between requests.
+        output_dir (str): Base directory to save files into.
 
     Returns:
         bool: True if download was successful, False otherwise.
@@ -77,7 +75,15 @@ def download_epub(work_id, session, delay=5, output_dir="."):
     # --- [ 1. Rate limiting ] ---
     time.sleep(delay)
 
-    # --- [ 2. Scrape the actual EPUB URL ] ---
+    # --- [ 2. Resolve output subdirectory from folder_path ] ---
+    if folder_path:
+        save_dir = os.path.join(output_dir, *folder_path)
+    else:
+        save_dir = output_dir
+
+    os.makedirs(save_dir, exist_ok=True)
+
+    # --- [ 3. Scrape the real EPUB URL from the work page ] ---
     epub_url = get_epub_url(work_id, session)
 
     if epub_url == "RATE_LIMITED":
@@ -89,16 +95,15 @@ def download_epub(work_id, session, delay=5, output_dir="."):
         print(f"\n -> [Error] Could not find EPUB link for ID {work_id}.")
         return False
 
-    # --- [ 3. Fetch the EPUB ] ---
-    time.sleep(delay)  # second polite pause before the actual download
+    # --- [ 4. Fetch and save the EPUB ] ---
+    time.sleep(delay)
 
     try:
         response = session.get(epub_url, headers=HEADERS)
 
         if response.status_code == 200:
-            # Derive filename from the URL path
-            filename = epub_url.split("/")[-1].split("?")[0]  # strips query params
-            filepath = f"{output_dir}/{filename}"
+            filename = epub_url.split("/")[-1].split("?")[0]
+            filepath = os.path.join(save_dir, filename)
 
             with open(filepath, "wb") as f:
                 f.write(response.content)
