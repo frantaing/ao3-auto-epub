@@ -5,56 +5,6 @@ Handles parsing HTML bookmark files and extracting AO3 work data.
 
 import os
 import re
-from bs4 import BeautifulSoup
-
-def _parse_folder(dl_tag, folder_path):
-    """
-    Recursively walks a <DL> block, tracking the current folder path.
-
-    Args:
-        dl_tag (Tag): A BeautifulSoup <DL> tag to walk.
-        folder_path (list[str]): The current folder hierarchy, e.g. ["ASOIAF"] or [].
-
-    Returns:
-        dict: Discovered AO3 fics in the format:
-              {'12345': {'url': 'https://archiveofourown.org/works/12345', 'folder_path': ['ASOIAF']}}
-    """
-    fics = {}
-
-    # Each direct child <DT> is either a link or a folder header
-    for dt in dl_tag.find_all("dt", recursive=False):
-
-        # --- Folder: <DT><H3>Folder Name</H3> followed by a <DL> ---
-        h3 = dt.find("h3")
-        if h3:
-            subfolder_name = h3.get_text(strip=True)
-            nested_dl = dt.find_next_sibling("dl")
-            if nested_dl:
-                # Recurse into the subfolder, extending the path
-                fics.update(_parse_folder(nested_dl, folder_path + [subfolder_name]))
-            continue
-
-        # --- Link: <DT><A href="..."> ---
-        a_tag = dt.find("a")
-        if not a_tag:
-            continue
-
-        url = a_tag.get("href", "")
-        if "archiveofourown.org/works/" not in url:
-            continue
-
-        match = re.search(r"/works/(\d+)", url)
-        if not match:
-            continue
-
-        work_id = match.group(1)
-        fics[work_id] = {
-            "url": f"https://archiveofourown.org/works/{work_id}",
-            "folder_path": folder_path,  # [] means root, no subfolder
-        }
-
-    return fics
-
 
 def extract_ao3_links(file_path):
     """
@@ -78,11 +28,38 @@ def extract_ao3_links(file_path):
     with open(file_path, "r", encoding="utf-8") as f:
         html_content = f.read()
 
-    soup = BeautifulSoup(html_content, "html.parser")
+    fics = {}
+    folder_stack = []  # Tracks current folder nesting
 
-    # The top-level <DL> is the root of the bookmark tree
-    root_dl = soup.find("dl")
-    if not root_dl:
-        return {}
+    # Tokenize the file line by line — the Netscape format is line-oriented
+    for line in html_content.splitlines():
+        line = line.strip()
 
-    return _parse_folder(root_dl, folder_path=[])
+        # --- Folder open: <DT><H3 ...>Folder Name</H3> ---
+        folder_match = re.search(r'<H3[^>]*>([^<]+)</H3>', line, re.IGNORECASE)
+        if folder_match:
+            folder_name = folder_match.group(1).strip()
+            folder_stack.append(folder_name)
+            continue
+
+        # --- Folder close: </DL> signals we've left the current folder ---
+        if re.search(r'</DL>', line, re.IGNORECASE):
+            if folder_stack:
+                folder_stack.pop()
+            continue
+
+        # --- Link: <DT><A HREF="..."> ---
+        link_match = re.search(r'<A\s+HREF="([^"]+)"', line, re.IGNORECASE)
+        if link_match:
+            url = link_match.group(1)
+            if "archiveofourown.org/works/" in url:
+                work_match = re.search(r'/works/(\d+)', url)
+                if work_match:
+                    work_id = work_match.group(1)
+                    # Copy the stack so it isn't mutated later
+                    fics[work_id] = {
+                        "url": f"https://archiveofourown.org/works/{work_id}",
+                        "folder_path": list(folder_stack),
+                    }
+
+    return fics
