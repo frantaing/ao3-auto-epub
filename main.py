@@ -63,7 +63,8 @@ def main():
     work_ids = list(fics_data.keys())
     if args.limit > 0:
         work_ids = work_ids[:args.limit]
-        print(f"Test mode: limiting to {args.limit} fics.")
+        fic_word = "fic" if args.limit == 1 else "fics"
+        print(f"Test mode: limiting to {args.limit} {fic_word}.")
 
     # --- [ 5. Download loop ] ---
     print("\nStarting downloads...\n")
