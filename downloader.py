@@ -97,11 +97,9 @@ def download_epub(work_id, session, folder_path=None, delay=5, output_dir="."):
     epub_url = get_epub_url(work_id, session)
 
     if epub_url == "LOCKED":
-        print(f"\n -> [Locked] Work {work_id} requires an AO3 account — skipping.")
         return "locked"
 
     if epub_url == "RATE_LIMITED":
-        print(f"\n -> [429] Rate limited scraping ID {work_id}. Pausing 5 minutes...")
         time.sleep(300)
         return "failed"
 
