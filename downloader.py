@@ -76,10 +76,7 @@ def download_epub(work_id, session, folder_path=None, delay=5, output_dir="."):
         str: "success", "skipped", "locked", or "failed".
     """
 
-    # --- [ 1. Rate limiting ] ---
-    time.sleep(delay)
-
-    # --- [ 2. Resolve output subdirectory from folder_path ] ---
+    # --- [ 1. Resolve output subdirectory from folder_path ] ---
     if folder_path:
         save_dir = os.path.join(output_dir, *folder_path)
     else:
@@ -87,7 +84,16 @@ def download_epub(work_id, session, folder_path=None, delay=5, output_dir="."):
 
     os.makedirs(save_dir, exist_ok=True)
 
-    # --- [ 3. Scrape the real EPUB URL from the work page ] ---
+    # --- [ 2. Skip if already downloaded ] ---
+    # Check for any existing EPUB for this work ID to support resuming interrupted runs
+    existing = [f for f in os.listdir(save_dir) if f.endswith(".epub") and work_id in f]
+    if existing:
+        return "skipped"
+
+    # --- [ 3. Rate limiting ] ---
+    time.sleep(delay)
+
+    # --- [ 4. Scrape the real EPUB URL from the work page ] ---
     epub_url = get_epub_url(work_id, session)
 
     if epub_url == "LOCKED":
@@ -103,7 +109,7 @@ def download_epub(work_id, session, folder_path=None, delay=5, output_dir="."):
         print(f"\n -> [Error] Could not find EPUB link for ID {work_id}.")
         return "failed"
 
-    # --- [ 4. Fetch and save the EPUB ] ---
+    # --- [ 5. Fetch and save the EPUB ] ---
     time.sleep(delay)
 
     try:
