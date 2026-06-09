@@ -56,7 +56,6 @@ def get_epub_url(work_id, session):
         print(f"\n -> [Exception] Could not load work page for ID {work_id}: {e}")
         return None
 
-
 def download_epub(work_id, session, folder_path=None, delay=5, output_dir="."):
     """
     Downloads an EPUB for a given AO3 work ID, saving it into the correct subfolder.
@@ -70,8 +69,9 @@ def download_epub(work_id, session, folder_path=None, delay=5, output_dir="."):
         output_dir (str): Base directory to save files into.
 
     Returns:
-        bool: True if download was successful, False otherwise.
+        str: "success", "skipped", "locked", or "failed".
     """
+
     # --- [ 1. Rate limiting ] ---
     time.sleep(delay)
 
@@ -89,11 +89,11 @@ def download_epub(work_id, session, folder_path=None, delay=5, output_dir="."):
     if epub_url == "RATE_LIMITED":
         print(f"\n -> [429] Rate limited scraping ID {work_id}. Pausing 5 minutes...")
         time.sleep(300)
-        return False
+        return "failed"
 
     if not epub_url:
         print(f"\n -> [Error] Could not find EPUB link for ID {work_id}.")
-        return False
+        return "failed"
 
     # --- [ 4. Fetch and save the EPUB ] ---
     time.sleep(delay)
@@ -107,17 +107,17 @@ def download_epub(work_id, session, folder_path=None, delay=5, output_dir="."):
 
             with open(filepath, "wb") as f:
                 f.write(response.content)
-            return True
+            return "success"
 
         elif response.status_code == 429:
             print(f"\n -> [429] Rate limited downloading ID {work_id}. Pausing 5 minutes...")
             time.sleep(300)
-            return False
+            return "failed"
 
         else:
             print(f"\n -> [Error {response.status_code}] Failed to download ID {work_id}.")
-            return False
+            return "failed"
 
     except requests.RequestException as e:
         print(f"\n -> [Exception] Connection error on ID {work_id}: {e}")
-        return False
+        return "failed"
