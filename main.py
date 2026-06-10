@@ -68,7 +68,7 @@ def main():
 
     # --- [ 5. Download loop ] ---
     print("\nStarting downloads...\n")
-    success_count = 0
+    counts = {"success": 0, "skipped": 0, "locked": 0, "failed": 0}
     session = requests.Session()
     session.cookies.set("view_adult", "true", domain="archiveofourown.org")
 
@@ -76,11 +76,10 @@ def main():
         fic = fics_data[work_id]
         folder_path = fic["folder_path"]
 
-        # Show the folder context alongside the work ID
         folder_label = "/".join(folder_path) if folder_path else "root"
         print(f"  [{folder_label}] Fetching ID {work_id}...", end=" ", flush=True)
 
-        result = download_epub(
+        status = download_epub(
             work_id,
             session,
             folder_path=folder_path,
@@ -88,14 +87,22 @@ def main():
             output_dir=output_path,
         )
 
-        if result:
-            print("✓")
-            success_count += 1
-        else:
-            print("✗")
+        counts[status] += 1
 
-    print(f"\nDone. {success_count}/{len(work_ids)} downloaded successfully.")
-    print(f"Files saved to: {output_path}")
+        labels = {
+            "success": "✓",
+            "skipped": "— skipped (already exists)",
+            "locked": "— locked",
+            "failed": "✗"
+        }
+        print(labels[status])
+
+    print(f"\nDone.")
+    print(f"  ✓  Downloaded : {counts['success']}")
+    print(f"  —  Skipped    : {counts['skipped']}")
+    print(f"  ⚠  Locked     : {counts['locked']}")
+    print(f"  ✗  Failed     : {counts['failed']}")
+    print(f"\nFiles saved to: {output_path}")
 
 if __name__ == "__main__":
     main()

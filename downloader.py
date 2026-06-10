@@ -39,6 +39,10 @@ def get_epub_url(work_id, session):
 
         soup = BeautifulSoup(response.text, "html.parser")
 
+        # Detect login wall because AO3 redirects locked works to a page with a login form
+        if soup.find("form", {"id": "new_user"}):
+            return "LOCKED"
+
         # AO3's download menu is a <li class="download"> containing per-format links
         download_section = soup.find("li", class_="download")
         if not download_section:
@@ -56,7 +60,6 @@ def get_epub_url(work_id, session):
         print(f"\n -> [Exception] Could not load work page for ID {work_id}: {e}")
         return None
 
-
 def download_epub(work_id, session, folder_path=None, delay=5, output_dir="."):
     """
     Downloads an EPUB for a given AO3 work ID, saving it into the correct subfolder.
@@ -70,12 +73,10 @@ def download_epub(work_id, session, folder_path=None, delay=5, output_dir="."):
         output_dir (str): Base directory to save files into.
 
     Returns:
-        bool: True if download was successful, False otherwise.
+        str: "success", "skipped", "locked", or "failed".
     """
-    # --- [ 1. Rate limiting ] ---
-    time.sleep(delay)
 
-    # --- [ 2. Resolve output subdirectory from folder_path ] ---
+    # --- [ 1. Resolve output subdirectory from folder_path ] ---
     if folder_path:
         save_dir = os.path.join(output_dir, *folder_path)
     else:
@@ -83,19 +84,30 @@ def download_epub(work_id, session, folder_path=None, delay=5, output_dir="."):
 
     os.makedirs(save_dir, exist_ok=True)
 
-    # --- [ 3. Scrape the real EPUB URL from the work page ] ---
+    # --- [ 2. Skip if already downloaded ] ---
+    # Check for any existing EPUB for this work ID to support resuming interrupted runs
+    existing = [f for f in os.listdir(save_dir) if f.endswith(".epub") and work_id in f]
+    if existing:
+        return "skipped"
+
+    # --- [ 3. Rate limiting ] ---
+    time.sleep(delay)
+
+    # --- [ 4. Scrape the real EPUB URL from the work page ] ---
     epub_url = get_epub_url(work_id, session)
 
+    if epub_url == "LOCKED":
+        return "locked"
+
     if epub_url == "RATE_LIMITED":
-        print(f"\n -> [429] Rate limited scraping ID {work_id}. Pausing 5 minutes...")
         time.sleep(300)
-        return False
+        return "failed"
 
     if not epub_url:
         print(f"\n -> [Error] Could not find EPUB link for ID {work_id}.")
-        return False
+        return "failed"
 
-    # --- [ 4. Fetch and save the EPUB ] ---
+    # --- [ 5. Fetch and save the EPUB ] ---
     time.sleep(delay)
 
     try:
@@ -107,17 +119,17 @@ def download_epub(work_id, session, folder_path=None, delay=5, output_dir="."):
 
             with open(filepath, "wb") as f:
                 f.write(response.content)
-            return True
+            return "success"
 
         elif response.status_code == 429:
             print(f"\n -> [429] Rate limited downloading ID {work_id}. Pausing 5 minutes...")
             time.sleep(300)
-            return False
+            return "failed"
 
         else:
             print(f"\n -> [Error {response.status_code}] Failed to download ID {work_id}.")
-            return False
+            return "failed"
 
     except requests.RequestException as e:
         print(f"\n -> [Exception] Connection error on ID {work_id}: {e}")
-        return False
+        return "failed"
