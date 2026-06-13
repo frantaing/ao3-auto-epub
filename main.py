@@ -9,6 +9,7 @@ import sys
 import requests
 from extractor import extract_ao3_links
 from downloader import download_epub
+from tqdm import tqdm
 
 DEFAULT_OUTPUT = os.path.join(os.path.expanduser("~"), "Downloads", "ao3-archiver")
 
@@ -72,12 +73,16 @@ def main():
     session = requests.Session()
     session.cookies.set("view_adult", "true", domain="archiveofourown.org")
 
-    for work_id in work_ids:
+    for work_id in tqdm(
+            work_ids,
+            desc="Downloading",
+            unit="fic",
+        ):
         fic = fics_data[work_id]
         folder_path = fic["folder_path"]
-
+        
         folder_label = "/".join(folder_path) if folder_path else "root"
-        print(f"  [{folder_label}] Fetching ID {work_id}...", end=" ", flush=True)
+        tqdm.write(f"  [{folder_label}] Fetching ID {work_id}...", end=" ")
 
         status = download_epub(
             work_id,
@@ -95,7 +100,7 @@ def main():
             "locked": "— locked",
             "failed": "✗"
         }
-        print(labels[status])
+        tqdm.write(labels[status])
 
     print(f"\nDone.")
     print(f"  ✓  Downloaded : {counts['success']}")
