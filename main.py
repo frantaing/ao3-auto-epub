@@ -69,6 +69,7 @@ def main():
 
     # --- [ 5. Download loop ] ---
     print("\nStarting downloads...\n")
+    print("This may take a while depending on how many fics you have. Please be patient!\n")
     counts = {"success": 0, "skipped": 0, "locked": 0, "failed": 0}
     session = requests.Session()
     session.cookies.set("view_adult", "true", domain="archiveofourown.org")
