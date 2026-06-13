@@ -77,6 +77,7 @@ def main():
             work_ids,
             desc="Downloading",
             unit="fic",
+            bar_format="Downloading {percentage:3.0f}% |{bar:50}| {n}/{total} fics [{elapsed}<{remaining}]"
         ):
         fic = fics_data[work_id]
         folder_path = fic["folder_path"]
