@@ -68,21 +68,17 @@ def main():
         print(f"Test mode: limiting to {args.limit} {fic_word}.")
 
     # --- [ 5. Download loop ] ---
-    print("\nStarting downloads...\n")
+    print("\nStarting downloads...")
     print("This may take a while depending on how many fics you have. Please be patient!\n")
     counts = {"success": 0, "skipped": 0, "locked": 0, "failed": 0}
+    failures = {"locked": [], "failed": []}  # track URLs for end-of-run summary
     session = requests.Session()
     session.cookies.set("view_adult", "true", domain="archiveofourown.org")
 
-    for work_id in tqdm(
-            work_ids,
-            desc="Downloading",
-            unit="fic",
-            bar_format="Downloading {percentage:3.0f}% |{bar:50}| {n}/{total} fics [{elapsed}<{remaining}]"
-        ):
+    for work_id in tqdm(work_ids, desc="Downloading", unit="fic", bar_format="Downloading {percentage:3.0f}% |{bar:50}| {n}/{total} fics [{elapsed}<{remaining}]"):
         fic = fics_data[work_id]
         folder_path = fic["folder_path"]
-        
+
         folder_label = "/".join(folder_path) if folder_path else "root"
         tqdm.write(f"  [{folder_label}] Fetching ID {work_id}...", end=" ")
 
@@ -95,6 +91,9 @@ def main():
         )
 
         counts[status] += 1
+
+        if status in failures:
+            failures[status].append(fics_data[work_id]["url"])
 
         labels = {
             "success": "✓",
@@ -109,6 +108,17 @@ def main():
     print(f"  —  Skipped    : {counts['skipped']}")
     print(f"  ⚠  Locked     : {counts['locked']}")
     print(f"  ✗  Failed     : {counts['failed']}")
+
+    if failures["locked"]:
+        print("\nLocked works (requires AO3 account to download):")
+        for url in failures["locked"]:
+            print(f"  {url}")
+
+    if failures["failed"]:
+        print("\nFailed works (try again later):")
+        for url in failures["failed"]:
+            print(f"  {url}")
+
     print(f"\nFiles saved to: {output_path}")
 
 if __name__ == "__main__":
