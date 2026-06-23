@@ -1,38 +1,40 @@
 # ao3-auto-epub
 
-A CLI tool to bulk-download AO3 fics from your browser bookmarks as EPUB files.
+A CLI tool to bulk-download AO3 fics as EPUBs from your browser bookmarks export. Mirrors your bookmark folder structure, handles rate limiting, and resumes interrupted runs automatically.
 
-## Requirements
+## Installation
 
-```
-pip install beautifulsoup4 requests
+```bash
+pip install -r requirements.txt
 ```
 
 ## Usage
 
-**Basic - download all AO3 fics from your bookmarks:**
 ```bash
 python main.py bookmarks.html
 ```
 
-**Specify a custom output folder:**
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--output` | Directory to save EPUBs | `~/Downloads/ao3-archiver/` |
+| `--delay` | Seconds between requests | `5` |
+| `--limit` | Max fics to download (useful for testing) | no limit |
+
+**Examples:**
 ```bash
+# Custom output folder
 python main.py bookmarks.html --output ~/Documents/fics
-```
 
-**Test run - only download the first 3 fics:**
-```bash
+# Test run with 3 fics
 python main.py bookmarks.html --limit 3
+
+# All options
+python main.py bookmarks.html --output ~/Documents/fics --delay 10 --limit 5
 ```
 
-**Adjust the delay between requests (default is 5 seconds):**
-```bash
-python main.py bookmarks.html --delay 10
-```
+## Notes
 
-**All options together:**
-```bash
-python main.py bookmarks.html --output ~/Documents/fics --limit 5 --delay 10
-```
-
-EPUBs are saved to `~/Downloads/ao3-archiver/` by default.
+- EPUBs are organised into subfolders matching your bookmark folders
+- Locked (members-only) works are detected and listed at the end of a run. *They are not downloaded!*
+- Already-downloaded works are skipped automatically, so interrupted runs can be safely resumed
+- AO3 rate limits aggressive scrapers, so the default 5s delay is intentional, don't go lower!
