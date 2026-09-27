@@ -114,7 +114,7 @@ def download_epub(work_id, session, folder_path=None, delay=5, output_dir="."):
         response = session.get(epub_url, headers=HEADERS)
 
         if response.status_code == 200:
-            filename = epub_url.split("/")[-1].split("?")[0]
+            filename = f"{work_id}_{epub_url.split('/')[-1].split('?')[0]}"
             filepath = os.path.join(save_dir, filename)
 
             with open(filepath, "wb") as f:
